@@ -1,18 +1,39 @@
 import pygame
 from settings import *
+from utils import RegisterManager
+from object import *
 
 class Game:
-    def __init__(self):
+    def __init__(self, resolution):
         pygame.init()
-        self.display = pygame.display.set_mode(RES)
+        self.display = pygame.display.set_mode(resolution)
         self.run_game = True
         self.clock = pygame.time.Clock()
+        self.resolution = resolution
+    
+    def find_objects_by_name(self, classname):
+        objects = []
+        
+        for object in self.objects:
+            if object.classname == classname:
+                objects.append(object)
+                
+        return objects
+    
+    def get_objects(self):
+        return self.objects
+    
+    def close(self):
+        self.run_game = False
     
     def run(self):
+        self.objects = RegisterManager.initialize_all(game)
+        
         while self.run_game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    self.run_game = False
+                    self.close()
+                    break
 
             self.update()
             
@@ -25,12 +46,14 @@ class Game:
         pygame.quit()
     
     def update(self):
-        pass
+        for object in self.objects:
+            object.update()
     
     def draw(self, display):
-        pygame.draw.rect(display, (255, 255, 255), (100, 100, 100, 100))
+        for object in self.objects:
+            object.draw(display)
         
-game = Game()
+game = Game(RES)
 
 if __name__ == "__main__":
     game.run()
