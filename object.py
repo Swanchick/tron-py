@@ -15,9 +15,19 @@ class GameObject:
     def update(self): ...
     def draw(self, display): ...
 
+
 class RoundManager(GameObject):
     def start(self):
-        self.game_started = False
+        self.round_state = "menu"
+        
+        self.font = pygame.font.Font("freesansbold.ttf", 24)
+        self.game_text = self.font.render("Press space to start game", True, WHITE)
+        
+        self.player_score = [0, 0]
+        
+        self.player1_score_text = self.font.render("Player 1: 0", True, COLOR_PLAYER_1)
+        self.player2_score_text = self.font.render("Player 2: 0", True, COLOR_PLAYER_2)
+        
     
     def find_players(self):
         objects = self.game.get_objects()
@@ -26,27 +36,54 @@ class RoundManager(GameObject):
         for object in objects:
             if issubclass(object.__class__, BasePlayer):
                 players.append(object)
-                print(object.classname)
 
         return players
     
     def update(self):
         key = pygame.key.get_pressed()
         
-        if key[pygame.K_SPACE] and not self.game_started:
-            self.game_started = True
+        if key[pygame.K_SPACE] and self.round_state != "game":
+            self.round_state = "game"
             self.players = self.find_players()
             self.start_round()
         
     def start_round(self):
         for player in self.players:
-            player.setup_enemy_tail()
-            player.can_move = True
+            player.start_round(self)
         
     def draw(self, display):
-        pass
+        if self.round_state == "menu" or self.round_state == "end":
+            display.blit(self.game_text, (WIDTH / 2 - 150, HEGIHT / 2 - 12, 100, 24))
+        
+        display.blit(self.player1_score_text, (0, 0, 150, 24))
+        display.blit(self.player2_score_text, (WIDTH - 125, 0, 130, 24))
+    
+    def update_score(self):
+        player1_score = self.player_score[0]
+        player2_score = self.player_score[1]
+        
+        self.player1_score_text = self.font.render(f"Player 1: {player1_score}", True, COLOR_PLAYER_1)
+        self.player2_score_text = self.font.render(f"Player 2: {player2_score}", True, COLOR_PLAYER_2)
+    
+    def end_round(self, who_win, color, player1, player2):
+        if self.round_state != "game":
+            return
+         
+        self.round_state = "end"
+        
+        self.game_text = self.font.render(who_win, True, color)
+        
+        for player in self.players:
+            player.can_move = False
+            player.restart()
+        
+        self.player_score[0] += player1
+        self.player_score[1] += player2
+        
+        self.update_score()
 
 RegisterManager.regist("RoundManager", RoundManager)
+
 
 class BasePlayer(GameObject):
     def start(self):
@@ -54,7 +91,7 @@ class BasePlayer(GameObject):
         self.speed = 5
         
         self.angle = 0
-        self.angular_speed = 0.1
+        self.angular_speed = 30
         
         self.x = 50
         self.y = 50
@@ -67,12 +104,14 @@ class BasePlayer(GameObject):
         self.tail_ignore = 2
         
         self.delay = 0
-        self.delay_max = 0.3
+        self.delay_max = 0.2
         
         self.color = WHITE
         
         self.can_move = False
         self.enemy_player = None
+        
+        self.round_manager = None
 
     def set_start_pos(self):
         self.start_pos = (self.x, self.y)
@@ -84,14 +123,15 @@ class BasePlayer(GameObject):
         self.controls()
         self.move()
         self.collision(self.tail, True)
+        self.boundary_collision()
     
     def controls(self):
         key = pygame.key.get_pressed()
         
         if key[pygame.K_RIGHT]:
-            self.angle += self.angular_speed
+            self.angle += math.pi / self.angular_speed
         if key[pygame.K_LEFT]:
-            self.angle -= self.angular_speed
+            self.angle -= math.pi / self.angular_speed
     
     def move(self):
         self.x += self.speed * math.cos(self.angle)
@@ -123,14 +163,29 @@ class BasePlayer(GameObject):
             if dist1 + dist2 <= line_dist + self.collision_handicap:
                 self.on_hit()
     
+    def boundary_collision(self):
+        if self.x < 0 or self.x > WIDTH:
+            self.on_hit()
+        
+        if self.y < 0 or self.y > HEGIHT:
+            self.on_hit()
+    
     def get_tail(self):
         return self.tail
+    
+    def start_round(self, round_manager):
+        self.restart()
+        
+        self.setup_enemy_tail()
+        
+        self.round_manager = round_manager
+        self.can_move = True
     
     def setup_enemy_tail(self):
         pass
     
     def on_hit(self):
-        self.restart()
+        ...
     
     def clear_tail(self):
         self.tail = []
@@ -168,11 +223,14 @@ class Player1(BasePlayer):
         if not self.enemy_player: return
         self.collision(self.enemy_player.get_tail(), False)
     
+    def on_hit(self):
+        self.round_manager.end_round("Player 2 Win!", COLOR_PLAYER_2, 0, 1)
+    
     def setup_enemy_tail(self):
         self.enemy_player = self.game.find_objects_by_name("Player2")[0]
         
-
 RegisterManager.regist("Player1", Player1)
+
 
 class Player2(BasePlayer):
     def start(self):
@@ -195,13 +253,16 @@ class Player2(BasePlayer):
         if not self.enemy_player: return
         self.collision(self.enemy_player.get_tail(), False)
     
+    def on_hit(self):
+        self.round_manager.end_round("Player 1 Win!", COLOR_PLAYER_1, 1, 0)
+    
     def controls(self):
         key = pygame.key.get_pressed()
         
         if key[pygame.K_d]:
-            self.angle += self.angular_speed
+            self.angle += math.pi / self.angular_speed
         if key[pygame.K_a]:
-            self.angle -= self.angular_speed
+            self.angle -= math.pi / self.angular_speed
             
     def setup_enemy_tail(self):
         self.enemy_player = self.game.find_objects_by_name("Player1")[0]
