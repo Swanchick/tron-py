@@ -87,7 +87,7 @@ RegisterManager.regist("RoundManager", RoundManager)
 
 class BasePlayer(GameObject):
     def start(self):
-        self.radius = 10
+        self.radius = 5
         self.speed = 5
         
         self.angle = 0
@@ -100,7 +100,7 @@ class BasePlayer(GameObject):
         
         self.tail = []
         self.tail_length = 100
-        self.collision_handicap = 1
+        self.collision_handicap = 1.5
         self.tail_ignore = 2
         
         self.delay = 0
