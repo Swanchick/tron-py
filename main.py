@@ -6,6 +6,7 @@ from object import *
 class Game:
     def __init__(self, resolution):
         pygame.init()
+        pygame.display.set_caption("Tron py")
         self.display = pygame.display.set_mode(resolution)
         self.run_game = True
         self.clock = pygame.time.Clock()
@@ -22,6 +23,11 @@ class Game:
     
     def get_objects(self):
         return self.objects
+    
+    def create_object(self, classname):
+        object = RegisterManager.initialize_object(self, classname)
+        
+        self.objects.append(object)
     
     def close(self):
         self.run_game = False
