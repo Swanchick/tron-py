@@ -33,7 +33,7 @@ class Game:
         self.run_game = False
     
     def run(self):
-        self.objects = RegisterManager.initialize_all(game)
+        self.objects = RegisterManager.initialize_all(self)
         
         while self.run_game:
             for event in pygame.event.get():
